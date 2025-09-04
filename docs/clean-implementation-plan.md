@@ -64,13 +64,13 @@ sha256 "def456..." # AMD64
 
 ## Implementation Steps
 
-### Phase 1: Setup S3 Bucket
+### Phase 1: Setup S3 Bucket *(Handled in geekbot-cli repo)*
 
 1. ~~Create `mgt-wc-geekbot-cli-releases` bucket~~ (Already exists)
 2. Configure IAM policy for SSO users
 3. Set up lifecycle policies
 
-### Phase 2: Update geekbot-cli Release Process
+### Phase 2: Update geekbot-cli Release Process *(Handled in geekbot-cli repo)*
 
 1. Modify `.github/workflows/release.yml`
 2. Add S3 upload step after GitHub release
@@ -78,14 +78,14 @@ sha256 "def456..." # AMD64
    - `s3://mgt-wc-geekbot-cli-releases/v{version}/geekbot-v{version}-aarch64-apple-darwin.tar.gz`
    - `s3://mgt-wc-geekbot-cli-releases/v{version}/geekbot-v{version}-x86_64-apple-darwin.tar.gz`
 
-### Phase 3: Create Homebrew Formula
+### Phase 3: Create Homebrew Formula *(This repo)*
 
 1. Create `Formula/geekbot-cli.rb`
 2. Handle AWS SSO authentication
 3. Download from S3, verify checksums
 4. Install binary
 
-### Phase 4: Automate Tap Updates
+### Phase 4: Automate Tap Updates *(Handled in geekbot-cli repo)*
 
 1. Create GitHub Action in geekbot-cli repo
 2. After S3 upload, trigger tap update
