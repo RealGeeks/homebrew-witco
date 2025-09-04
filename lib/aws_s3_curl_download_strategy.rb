@@ -65,8 +65,13 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
     
     # Test if already authenticated - capture output for debugging
     aws_path = "#{ENV['HOMEBREW_PREFIX']}/bin/aws"
-    puts "Running: AWS_CONFIG_FILE=#{config_file} #{aws_path} sts get-caller-identity --profile geekbot-cli"
-    result = `AWS_CONFIG_FILE=#{config_file} #{aws_path} sts get-caller-identity --profile geekbot-cli 2>&1`
+    puts "Running: #{aws_path} sts get-caller-identity --profile geekbot-cli"
+    
+    # Set environment variables properly for the AWS CLI call
+    result = nil
+    exit_code = nil
+    ENV["AWS_CONFIG_FILE"] = config_file
+    result = `#{aws_path} sts get-caller-identity --profile geekbot-cli 2>&1`
     exit_code = $?.exitstatus
     
     puts "Exit code: #{exit_code}"
@@ -82,13 +87,13 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
     puts "This will open your browser for authentication"
     
     # Trigger SSO login with explicit config file
-    puts "Running: AWS_CONFIG_FILE=#{config_file} #{aws_path} sso login --profile geekbot-cli"
-    unless system("AWS_CONFIG_FILE=#{config_file} #{aws_path} sso login --profile geekbot-cli")
+    puts "Running: #{aws_path} sso login --profile geekbot-cli"
+    unless system({"AWS_CONFIG_FILE" => config_file}, aws_path, "sso", "login", "--profile", "geekbot-cli")
       raise "❌ AWS SSO login failed"
     end
     
     # Verify authentication worked
-    unless system("AWS_CONFIG_FILE=#{config_file} #{aws_path} sts get-caller-identity --profile geekbot-cli > /dev/null 2>&1")
+    unless system({"AWS_CONFIG_FILE" => config_file}, aws_path, "sts", "get-caller-identity", "--profile", "geekbot-cli", out: File::NULL, err: File::NULL)
       raise "❌ AWS SSO authentication verification failed"
     end
     
