@@ -30,6 +30,8 @@ test-formula: clean ## Test formula (for reference)
 	@brew tap-new local/witco --no-git
 	@echo "Copying formula to local tap..."
 	@cp Formula/geekbot-cli.rb /opt/homebrew/Library/Taps/local/homebrew-witco/Formula/
+	@echo "Copying lib directory to local tap..."
+	@cp -r lib /opt/homebrew/Library/Taps/local/homebrew-witco/
 	@echo "Installing formula..."
 	@brew install --verbose local/witco/geekbot-cli
 	@echo "✅ Installation complete"
