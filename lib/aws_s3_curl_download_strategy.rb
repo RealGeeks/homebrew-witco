@@ -34,11 +34,9 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
       puts "🔗 Generating presigned URL for: #{s3_uri}"
       
       aws_path = "#{ENV['HOMEBREW_PREFIX']}/bin/aws"
-      config_file = ENV["AWS_CONFIG_FILE"]
 
       # Generate presigned URL valid for 5 minutes (300 seconds)
-      ENV["AWS_CONFIG_FILE"] = config_file
-      presigned_url = `#{aws_path} s3 presign "#{s3_uri}" --expires-in 300 --profile geekbot-cli 2>&1`.strip
+      presigned_url = `AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} s3 presign "#{s3_uri}" --expires-in 300 --profile geekbot-cli 2>&1`.strip
 
       if $?.exitstatus == 0
         puts "✅ Generated presigned URL: #{presigned_url[0..80]}..."
@@ -53,15 +51,18 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
     end
   end
 
+  def aws_config_file
+    "#{Dir.home}/.homebrew-geekbot/aws-config"
+  end
+
   def setup_aws_config
     # Use formula-specific location to avoid interfering with user's config
     config_dir = "#{Dir.home}/.homebrew-geekbot"
-    config_file = "#{config_dir}/aws-config"
 
-    if File.exist?(config_file)
-      puts "✅ AWS config already exists at #{config_file}"
+    if File.exist?(aws_config_file)
+      puts "✅ AWS config already exists at #{aws_config_file}"
     else
-      puts "Creating AWS config file at #{config_file}..."
+      puts "Creating AWS config file at #{aws_config_file}..."
       FileUtils.mkdir_p(config_dir)
 
       config_content = <<~CONFIG
@@ -79,18 +80,15 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
         output = json
       CONFIG
 
-      File.write(config_file, config_content)
+      File.write(aws_config_file, config_content)
       puts "✅ AWS config created"
     end
 
-    # Set environment variable so AWS CLI knows where to find our config
-    ENV["AWS_CONFIG_FILE"] = config_file
-    puts "✅ AWS_CONFIG_FILE set to #{config_file}"
+    puts "✅ AWS config ready at #{aws_config_file}"
   end
 
   def test_aws_sso
-    config_file = ENV["AWS_CONFIG_FILE"]
-    puts "🔍 Testing AWS authentication with config: #{config_file}"
+    puts "🔍 Testing AWS authentication with config: #{aws_config_file}"
 
     # Debug PATH and AWS CLI location
     puts "🐛 DEBUG: Current PATH: #{ENV['PATH']}"
@@ -106,11 +104,8 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
     aws_path = "#{ENV['HOMEBREW_PREFIX']}/bin/aws"
     puts "Running: #{aws_path} sts get-caller-identity --profile geekbot-cli"
 
-    # Set environment variables properly for the AWS CLI call
-    result = nil
-    exit_code = nil
-    ENV["AWS_CONFIG_FILE"] = config_file
-    result = `#{aws_path} sts get-caller-identity --profile geekbot-cli 2>&1`
+    # Test authentication by calling AWS CLI with explicit config
+    result = `AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} sts get-caller-identity --profile geekbot-cli 2>&1`
     exit_code = $?.exitstatus
 
     puts "Exit code: #{exit_code}"
@@ -127,12 +122,12 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
 
     # Trigger SSO login with explicit config file
     puts "Running: #{aws_path} sso login --profile geekbot-cli"
-    unless system({"AWS_CONFIG_FILE" => config_file}, aws_path, "sso", "login", "--profile", "geekbot-cli")
+    unless system("AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} sso login --profile geekbot-cli")
       raise "❌ AWS SSO login failed"
     end
 
     # Verify authentication worked
-    unless system({"AWS_CONFIG_FILE" => config_file}, aws_path, "sts", "get-caller-identity", "--profile", "geekbot-cli", out: File::NULL, err: File::NULL)
+    unless system("AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} sts get-caller-identity --profile geekbot-cli >/dev/null 2>&1")
       raise "❌ AWS SSO authentication verification failed"
     end
 
