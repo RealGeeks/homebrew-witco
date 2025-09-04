@@ -28,8 +28,8 @@ Installs as /opt/homebrew/bin/geekbot-cli
 
 ### 2. Private S3 Bucket
 
-- **Bucket**: `geekbot-cli-releases`
-- **Structure**: `s3://geekbot-cli-releases/v{version}/geekbot-{arch}`
+- **Bucket**: `mgt-wc-geekbot-cli-releases`
+- **Structure**: `s3://mgt-wc-geekbot-cli-releases/v{version}/geekbot-v{version}-{arch}.tar.gz`
 - **Access**: AWS SSO authenticated users only
 
 ### 3. Release Coordination
@@ -66,7 +66,7 @@ sha256 "def456..." # AMD64
 
 ### Phase 1: Setup S3 Bucket
 
-1. Create `geekbot-cli-releases` bucket
+1. ~~Create `mgt-wc-geekbot-cli-releases` bucket~~ (Already exists)
 2. Configure IAM policy for SSO users
 3. Set up lifecycle policies
 
@@ -75,8 +75,8 @@ sha256 "def456..." # AMD64
 1. Modify `.github/workflows/release.yml`
 2. Add S3 upload step after GitHub release
 3. Upload binaries as:
-   - `s3://geekbot-cli-releases/v{version}/geekbot-darwin-arm64`
-   - `s3://geekbot-cli-releases/v{version}/geekbot-darwin-amd64`
+   - `s3://mgt-wc-geekbot-cli-releases/v{version}/geekbot-v{version}-aarch64-apple-darwin.tar.gz`
+   - `s3://mgt-wc-geekbot-cli-releases/v{version}/geekbot-v{version}-x86_64-apple-darwin.tar.gz`
 
 ### Phase 3: Create Homebrew Formula
 
@@ -110,8 +110,8 @@ class GeekbotCli < Formula
     # Download from S3
     download_from_s3
 
-    # Verify and install
-    verify_and_install
+    # Extract and install
+    extract_and_install
   end
 
   private
@@ -121,11 +121,16 @@ class GeekbotCli < Formula
   end
 
   def download_from_s3
+    # Determine architecture
+    arch = Hardware::CPU.arm? ? "aarch64-apple-darwin" : "x86_64-apple-darwin"
+    tarball = "geekbot-v#{version}-#{arch}.tar.gz"
+    s3_path = "s3://mgt-wc-geekbot-cli-releases/v#{version}/#{tarball}"
+    
     # aws s3 cp with geekbot-cli profile
   end
 
-  def verify_and_install
-    # SHA256 check and bin install
+  def extract_and_install
+    # Extract tar.gz, verify SHA256, install binary
   end
 end
 ```
