@@ -49,53 +49,69 @@ class GeekbotCli < Formula
   private
 
   def setup_aws_config
-    aws_dir = File.expand_path("~/.aws")
-    config_file = "#{aws_dir}/config"
+    # Use formula-specific location to avoid interfering with user's config
+    config_dir = "#{Dir.home}/.homebrew-geekbot"
+    config_file = "#{config_dir}/aws-config"
     
     if File.exist?(config_file)
       ohai "✅ AWS config already exists at #{config_file}"
-      return
+    else
+      ohai "Creating AWS config file at #{config_file}..."
+      FileUtils.mkdir_p(config_dir)
+      
+      config_content = <<~CONFIG
+        [sso-session witco]
+        sso_start_url = https://witco.awsapps.com/start
+        sso_region = us-east-2
+        sso_registration_scopes = sso:account:access
+
+        [profile geekbot-cli]
+        sso_account_id = 357890849873
+        sso_session = witco
+        sso_role_name = infra-developer
+        region = us-east-1
+        duration_seconds = 43200
+        output = json
+      CONFIG
+      
+      File.write(config_file, config_content)
+      ohai "✅ AWS config created"
     end
     
-    ohai "Creating AWS config file at #{config_file}..."
-    FileUtils.mkdir_p(aws_dir)
-    
-    config_content = <<~CONFIG
-      [sso-session witco]
-      sso_start_url = https://witco.awsapps.com/start
-      sso_region = us-east-2
-      sso_registration_scopes = sso:account:access
-
-      [profile geekbot-cli]
-      sso_account_id = 357890849873
-      sso_session = witco
-      sso_role_name = infra-developer
-      region = us-east-1
-      duration_seconds = 43200
-      output = json
-    CONFIG
-    
-    File.write(config_file, config_content)
-    ohai "✅ AWS config created"
+    # Set environment variable so AWS CLI knows where to find our config
+    ENV["AWS_CONFIG_FILE"] = config_file
+    ohai "✅ AWS_CONFIG_FILE set to #{config_file}"
   end
 
   def test_aws_sso
-    # Test if already authenticated
-    if system("aws sts get-caller-identity --profile geekbot-cli > /dev/null 2>&1")
+    config_file = ENV["AWS_CONFIG_FILE"]
+    ohai "🔍 Testing AWS authentication with config: #{config_file}"
+    
+    # Test if already authenticated - capture output for debugging
+    ohai "Running: AWS_CONFIG_FILE=#{config_file} aws sts get-caller-identity --profile geekbot-cli"
+    result = `AWS_CONFIG_FILE=#{config_file} aws sts get-caller-identity --profile geekbot-cli 2>&1`
+    exit_code = $?.exitstatus
+    
+    ohai "Exit code: #{exit_code}"
+    ohai "Output: #{result.strip}" unless result.strip.empty?
+    
+    if exit_code == 0
       ohai "✅ Already authenticated with AWS SSO"
       return
     end
     
     ohai "🔐 AWS SSO authentication required..."
+    ohai "Exit code was #{exit_code}, output: #{result.strip}"
     ohai "This will open your browser for authentication"
     
-    # Trigger SSO login
-    unless system("aws sso login --profile geekbot-cli")
+    # Trigger SSO login with explicit config file
+    ohai "Running: AWS_CONFIG_FILE=#{config_file} aws sso login --profile geekbot-cli"
+    unless system("AWS_CONFIG_FILE=#{config_file} aws sso login --profile geekbot-cli")
       odie "❌ AWS SSO login failed"
     end
     
     # Verify authentication worked
-    if system("aws sts get-caller-identity --profile geekbot-cli > /dev/null 2>&1")
+    if system("AWS_CONFIG_FILE=#{config_file} aws sts get-caller-identity --profile geekbot-cli > /dev/null 2>&1")
       ohai "✅ AWS SSO authentication successful"
     else
       odie "❌ AWS SSO authentication verification failed"
