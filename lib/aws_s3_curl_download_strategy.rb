@@ -14,8 +14,24 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
 
   def url
     return @presigned_url if @presigned_url
+    
+    # Try to reuse a recently generated presigned URL from file cache
+    cache_file = "#{Dir.tmpdir}/homebrew-geekbot-url-cache"
+    if File.exist?(cache_file) && (Time.now - File.mtime(cache_file)) < 300 # 5 minutes
+      cached_url = File.read(cache_file).strip
+      if !cached_url.empty?
+        puts "🔄 Reusing cached presigned URL..."
+        @presigned_url = cached_url
+        return @presigned_url
+      end
+    end
+    
     puts "🔄 url method called, generating presigned URL..."
     @presigned_url = generate_presigned_url
+    
+    # Cache the URL for reuse by other instances
+    File.write(cache_file, @presigned_url)
+    @presigned_url
   end
 
   private
@@ -35,8 +51,8 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
       
       aws_path = "#{ENV['HOMEBREW_PREFIX']}/bin/aws"
 
-      # Generate presigned URL valid for 5 minutes (300 seconds)
-      presigned_url = `AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} s3 presign "#{s3_uri}" --expires-in 300 --profile geekbot-cli 2>&1`.strip
+      # Generate presigned URL valid for 15 minutes (900 seconds) to allow for multiple uses
+      presigned_url = `AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} s3 presign "#{s3_uri}" --expires-in 900 --profile geekbot-cli 2>&1`.strip
 
       if $?.exitstatus == 0
         puts "✅ Generated presigned URL: #{presigned_url[0..80]}..."
