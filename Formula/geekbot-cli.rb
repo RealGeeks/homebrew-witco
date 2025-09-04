@@ -7,7 +7,7 @@ class GeekbotCli < Formula
 
   # Dummy URL that works - we ignore this download in install method
   url "https://mgt-wc-geekbot-cli-releases.s3.us-east-1.amazonaws.com/v0.1.0/geekbot-v0.1.0-aarch64-apple-darwin.tar.gz", using: AwsS3CurlDownloadStrategy
-  sha256 "34873e5e4856c87de505d2086f0ad5f91777297604ed0d45e9233315798a727e"
+  sha256 "4424e77dd9a033c0776d5e185e493772efbcef1408bf3f3789e911c993ac05e7"
 
   # Prerequisites only for now
   depends_on "awscli"
@@ -15,6 +15,12 @@ class GeekbotCli < Formula
 
   def install
     bin.install "geekbot" => "geekbot-cli"
+  end
+
+  def uninstall_preflight
+    # Clean up AWS config directory created by our custom download strategy
+    config_dir = "#{Dir.home}/.homebrew-geekbot"
+    FileUtils.rm_rf(config_dir) if Dir.exist?(config_dir)
   end
 
   test do

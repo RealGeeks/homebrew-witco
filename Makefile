@@ -47,4 +47,6 @@ clean: ## Remove local installations
 	@-brew untap local/witco --force 2>/dev/null || echo "Local tap not found"
 	@echo "Clearing Homebrew cache..."
 	@-rm -rf /opt/homebrew/Caskroom/geekbot-cli 2>/dev/null || echo "Caskroom not found"
+	@echo "Removing AWS config directory..."
+	@-rm -rf ~/.homebrew-geekbot 2>/dev/null || echo "AWS config directory not found"
 	@echo "✅ Cleanup complete"
