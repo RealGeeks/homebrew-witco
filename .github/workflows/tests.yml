@@ -1,0 +1,63 @@
+name: Formula Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Formula/*.rb'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Formula/*.rb'
+      - '.github/workflows/tests.yml'
+
+jobs:
+  test-formula-syntax:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+        
+      - name: Install Homebrew dependencies
+        run: brew install awscli
+        
+      - name: Audit formula
+        run: |
+          for formula in Formula/*.rb; do
+            echo "Auditing $formula..."
+            brew audit --strict --online --display-filename "$formula" || true
+          done
+      
+      - name: Check formula style
+        run: |
+          brew style Formula/*.rb
+      
+      - name: Test formula syntax
+        run: |
+          for formula in Formula/*.rb; do
+            echo "Testing syntax for $formula..."
+            ruby -c "$formula"
+          done
+
+  test-tap-installation:
+    strategy:
+      matrix:
+        os: [macos-12, macos-13, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      
+      - name: Add tap
+        run: |
+          brew tap witco/witco "$(pwd)"
+      
+      - name: Verify tap
+        run: |
+          brew tap | grep "witco/witco"
+          brew search witco/witco/

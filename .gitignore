@@ -1,0 +1,41 @@
+# Binaries
+witco-cli
+witco-cli-*
+*.exe
+
+# Checksums
+*.sha256
+*.md5
+
+# Test files
+test-download
+test-*
+tmp/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+*.zip
+*.tar.gz
+
+# Logs
+*.log
+logs/
+
+# AWS
+.aws/
+
+# Homebrew
+*.bottle.*
