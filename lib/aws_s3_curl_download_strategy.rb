@@ -12,29 +12,16 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
     super
   end
 
-  def url
-    return @presigned_url if @presigned_url
-    
-    # Try to reuse a recently generated presigned URL from file cache
-    cache_file = "#{Dir.tmpdir}/homebrew-geekbot-url-cache"
-    if File.exist?(cache_file) && (Time.now - File.mtime(cache_file)) < 300 # 5 minutes
-      cached_url = File.read(cache_file).strip
-      if !cached_url.empty?
-        puts "🔄 Reusing cached presigned URL..."
-        @presigned_url = cached_url
-        return @presigned_url
-      end
-    end
-    
-    puts "🔄 url method called, generating presigned URL..."
-    @presigned_url = generate_presigned_url
-    
-    # Cache the URL for reuse by other instances
-    File.write(cache_file, @presigned_url)
-    @presigned_url
-  end
-
   private
+
+  def _fetch(url:, resolved_url:, timeout:)
+    # Generate presigned URL just before download
+    presigned_url = generate_presigned_url
+    puts "🔄 Using presigned URL for download..."
+    
+    # Use the presigned URL for the actual download
+    super(url: presigned_url, resolved_url: presigned_url, timeout: timeout)
+  end
 
   def generate_presigned_url
     # Convert HTTPS S3 URL to S3 URI for aws s3 presign command
