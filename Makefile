@@ -17,7 +17,8 @@ test-cask: clean ## Test cask syntax and install locally
 	@brew install --verbose --cask local/witco/geekbot-cli
 	@echo "✅ Installation complete"
 	@echo "Testing installed binary..."
-	@geekbot-cli
+	@test -f /opt/homebrew/bin/geekbot-cli || (echo "❌ Binary not found" && exit 1)
+	@/opt/homebrew/bin/geekbot-cli
 	@echo "✅ All tests passed"
 
 test-formula: clean ## Test formula (for reference)
@@ -34,11 +35,14 @@ test-formula: clean ## Test formula (for reference)
 	@echo "✅ Installation complete"
 
 clean: ## Remove local installations
-	@echo "Uninstalling geekbot-cli..."
-	@-brew uninstall geekbot-cli 2>/dev/null || echo "Not installed"
-	@-brew uninstall --cask geekbot-cli 2>/dev/null || echo "Cask not installed"
+	@echo "Uninstalling geekbot-cli from all taps..."
+	@-brew uninstall geekbot-cli 2>/dev/null || echo "Formula not installed"
+	@-brew uninstall --cask local/witco/geekbot-cli 2>/dev/null || echo "Local cask not installed"
+	@-brew uninstall --cask realgeeks/witco/geekbot-cli 2>/dev/null || echo "Remote cask not installed"
 	@echo "Removing binary..."
 	@-rm -f /opt/homebrew/bin/geekbot-cli 2>/dev/null || echo "Binary not found"
 	@echo "Removing local tap..."
-	@-brew untap local/witco 2>/dev/null || echo "Local tap not found"
+	@-brew untap local/witco --force 2>/dev/null || echo "Local tap not found"
+	@echo "Clearing Homebrew cache..."
+	@-rm -rf /opt/homebrew/Caskroom/geekbot-cli 2>/dev/null || echo "Caskroom not found"
 	@echo "✅ Cleanup complete"

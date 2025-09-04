@@ -12,21 +12,23 @@ cask "geekbot-cli" do
   # Prerequisites only for now
   depends_on formula: "awscli"
   
-  postflight do
-    # Test prerequisites layer - keep it simple for now
+  preflight do
+    # Test prerequisites layer BEFORE download
     puts "🧪 Testing prerequisites layer..."
     
-    # Test: Verify we can access AWS CLI (path might be different in cask context)
+    # Test: Verify we can access AWS CLI
     aws_path = "/opt/homebrew/bin/aws"
-    if File.exist?(aws_path)
-      puts "✅ AWS CLI found at #{aws_path}"
-    else
-      puts "⚠️  AWS CLI not found at expected path, but dependency should ensure it's available"
+    unless File.exist?(aws_path)
+      raise "❌ AWS CLI not found at #{aws_path} - dependency failed"
     end
     
+    puts "✅ AWS CLI found at #{aws_path}"
     puts "✅ macOS version check passed"
-    
-    # Create placeholder binary
+    puts "✅ Prerequisites layer complete - proceeding with download"
+  end
+  
+  postflight do
+    # Create placeholder binary after installation
     placeholder_script = <<~EOS
       #!/bin/bash
       echo "🧪 Prerequisites test passed!"
@@ -37,7 +39,7 @@ cask "geekbot-cli" do
     File.write("/opt/homebrew/bin/geekbot-cli", placeholder_script)
     File.chmod(0755, "/opt/homebrew/bin/geekbot-cli")
     
-    puts "✅ Prerequisites layer complete. Run 'geekbot-cli' to test."
+    puts "✅ geekbot-cli binary created. Run 'geekbot-cli' to test."
   end
   
   uninstall delete: "/opt/homebrew/bin/geekbot-cli"
