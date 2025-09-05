@@ -37,12 +37,24 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
       aws_path = "#{ENV['HOMEBREW_PREFIX']}/bin/aws"
 
       # Generate presigned URL valid for 15 minutes (900 seconds) to allow for multiple uses
-      presigned_url = `AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} s3 presign "#{s3_uri}" --expires-in 900 --profile geekbot-cli 2>&1`.strip
+      result = ""
+      exit_code = nil
+      IO.popen(
+        {"AWS_CONFIG_FILE" => aws_config_file},
+        [aws_path, "s3", "presign", s3_uri, "--expires-in", "900", "--profile", "geekbot-cli"],
+        err: [:child, :out]
+      ) do |io|
+        result = io.read.strip
+        io.close
+        exit_code = $?.exitstatus
+      end
+      
+      presigned_url = result
 
-      if $?.exitstatus == 0
+      if exit_code == 0
         presigned_url
       else
-        raise "Failed to generate presigned URL: #{presigned_url}"
+        raise "Failed to generate presigned URL: #{result}"
       end
     else
       raise "Invalid S3 URL format: #{@url}"
@@ -67,9 +79,9 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
         sso_registration_scopes = sso:account:access
 
         [profile geekbot-cli]
-        sso_account_id = 558529356944
+        sso_account_id = #{ENV.fetch("HOMEBREW_GEEKBOT_AWS_ACCOUNT_ID", "558529356944")}
         sso_session = witco
-        sso_role_name = infra-developer
+        sso_role_name = #{ENV.fetch("HOMEBREW_GEEKBOT_AWS_ROLE", "infra-developer")}
         region = us-east-1
         duration_seconds = 43200
         output = json
@@ -82,8 +94,17 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
   def test_aws_sso
     # Test authentication by calling AWS CLI with explicit config
     aws_path = "#{ENV['HOMEBREW_PREFIX']}/bin/aws"
-    result = `AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} sts get-caller-identity --profile geekbot-cli 2>&1`
-    exit_code = $?.exitstatus
+    result = ""
+    exit_code = nil
+    IO.popen(
+      {"AWS_CONFIG_FILE" => aws_config_file},
+      [aws_path, "sts", "get-caller-identity", "--profile", "geekbot-cli"],
+      err: [:child, :out]
+    ) do |io|
+      result = io.read.strip
+      io.close
+      exit_code = $?.exitstatus
+    end
 
     if exit_code == 0
       return
