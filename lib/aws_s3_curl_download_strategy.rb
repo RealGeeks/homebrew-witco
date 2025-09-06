@@ -78,9 +78,9 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
         sso_registration_scopes = sso:account:access
 
         [profile geekbot-cli]
-        sso_account_id = #{ENV.fetch("HOMEBREW_GEEKBOT_AWS_ACCOUNT_ID", "558529356944")}
+        sso_account_id = #{ENV.fetch("AWS_ACCOUNT_ID", "558529356944")}
         sso_session = witco
-        sso_role_name = #{ENV.fetch("HOMEBREW_GEEKBOT_AWS_ROLE", "infra-developer")}
+        sso_role_name = #{ENV.fetch("AWS_ROLE", "infra-developer")}
         region = us-east-1
         duration_seconds = 43200
         output = json
