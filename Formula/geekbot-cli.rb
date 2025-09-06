@@ -1,108 +1,29 @@
+require_relative "../lib/aws_s3_curl_download_strategy"
+
 class GeekbotCli < Formula
   desc "Private CLI tool for Real Geeks operations"
   homepage "https://github.com/cincpro/geekbot-cli"
   version "0.1.0"
-  
-  # Use real GitHub release URL for now (we'll override download behavior)
-  url "https://github.com/cincpro/geekbot-cli/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "SKIP"
-  
+
+  # Dummy URL that works - we ignore this download in install method
+  url "https://mgt-wc-geekbot-cli-releases.s3.us-east-1.amazonaws.com/v0.1.0/geekbot-v0.1.0-aarch64-apple-darwin.tar.gz", using: AwsS3CurlDownloadStrategy
+  sha256 "4424e77dd9a033c0776d5e185e493772efbcef1408bf3f3789e911c993ac05e7"
+
   # Prerequisites only for now
   depends_on "awscli"
   depends_on :macos => :monterey
-  
+
   def install
-    # Ignore whatever was downloaded - we'll implement our own logic
-    ohai "🧪 Testing prerequisites layer..."
-    
-    # Test 1: Verify awscli dependency
-    if system("which aws > /dev/null 2>&1")
-      aws_version = `aws --version 2>&1`.strip
-      ohai "✅ AWS CLI dependency working: #{aws_version}"
-    else
-      odie "❌ AWS CLI not found - dependency failed"
-    end
-    
-    # Test 2: Verify macOS version
-    ohai "✅ macOS version check passed"
-    
-    ohai "🧪 Testing AWS SSO layer..."
-    
-    # Set up AWS config if needed
-    setup_aws_config
-    
-    # Test AWS SSO authentication
-    test_aws_sso
-    
-    # Create placeholder binary (ignoring the downloaded source)
-    (bin/"geekbot-cli").write <<~EOS
-      #!/bin/bash
-      echo "🧪 Prerequisites + SSO test passed!"
-      echo "AWS CLI: $(aws --version 2>&1)"
-      echo "AWS Profile: $(aws sts get-caller-identity --profile geekbot-cli 2>/dev/null || echo 'Not authenticated')"
-      echo "Next layer: S3 download"
-    EOS
-    
-    ohai "✅ Prerequisites + SSO layer complete. Run 'geekbot-cli' to test."
+    bin.install "geekbot" => "geekbot-cli"
   end
 
-  private
-
-  def setup_aws_config
-    aws_dir = File.expand_path("~/.aws")
-    config_file = "#{aws_dir}/config"
-    
-    if File.exist?(config_file)
-      ohai "✅ AWS config already exists at #{config_file}"
-      return
-    end
-    
-    ohai "Creating AWS config file at #{config_file}..."
-    FileUtils.mkdir_p(aws_dir)
-    
-    config_content = <<~CONFIG
-      [sso-session witco]
-      sso_start_url = https://witco.awsapps.com/start
-      sso_region = us-east-2
-      sso_registration_scopes = sso:account:access
-
-      [profile geekbot-cli]
-      sso_account_id = 357890849873
-      sso_session = witco
-      sso_role_name = infra-developer
-      region = us-east-1
-      duration_seconds = 43200
-      output = json
-    CONFIG
-    
-    File.write(config_file, config_content)
-    ohai "✅ AWS config created"
+  def uninstall_preflight
+    # Clean up AWS config directory created by our custom download strategy
+    config_dir = "#{Dir.home}/.homebrew-geekbot"
+    FileUtils.rm_rf(config_dir) if Dir.exist?(config_dir)
   end
 
-  def test_aws_sso
-    # Test if already authenticated
-    if system("aws sts get-caller-identity --profile geekbot-cli > /dev/null 2>&1")
-      ohai "✅ Already authenticated with AWS SSO"
-      return
-    end
-    
-    ohai "🔐 AWS SSO authentication required..."
-    ohai "This will open your browser for authentication"
-    
-    # Trigger SSO login
-    unless system("aws sso login --profile geekbot-cli")
-      odie "❌ AWS SSO login failed"
-    end
-    
-    # Verify authentication worked
-    if system("aws sts get-caller-identity --profile geekbot-cli > /dev/null 2>&1")
-      ohai "✅ AWS SSO authentication successful"
-    else
-      odie "❌ AWS SSO authentication verification failed"
-    end
-  end
-  
   test do
-    assert_match "Prerequisites + SSO test passed", shell_output("#{bin}/geekbot-cli")
+    assert_match version.to_s, shell_output("#{bin}/geekbot-cli --version")
   end
 end
