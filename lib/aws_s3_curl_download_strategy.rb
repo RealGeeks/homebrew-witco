@@ -32,7 +32,6 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
       region = $2
       key = $3
       s3_uri = "s3://#{bucket}/#{key}"
-
       
       aws_path = "#{ENV['HOMEBREW_PREFIX']}/bin/aws"
 
@@ -111,12 +110,12 @@ class AwsS3CurlDownloadStrategy < CurlDownloadStrategy
     end
 
     # Trigger SSO login with explicit config file
-    unless system("AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} sso login --profile geekbot-cli")
+    unless system({"AWS_CONFIG_FILE" => aws_config_file}, aws_path, "sso", "login", "--profile", "geekbot-cli")
       raise "AWS SSO login failed"
     end
 
     # Verify authentication worked
-    unless system("AWS_CONFIG_FILE=#{aws_config_file} #{aws_path} sts get-caller-identity --profile geekbot-cli >/dev/null 2>&1")
+    unless system({"AWS_CONFIG_FILE" => aws_config_file}, aws_path, "sts", "get-caller-identity", "--profile", "geekbot-cli", out: File::NULL, err: File::NULL)
       raise "AWS SSO authentication verification failed"
     end
   end
